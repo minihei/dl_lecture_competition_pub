@@ -25,8 +25,7 @@ def run(args: DictConfig):
     # ------------------
     #    Dataloader
     # ------------------
-#    loader_args = {"batch_size": args.batch_size, "num_workers": args.num_workers}
-    loader_args = {"batch_size": args.batch_size, "num_workers": 0}
+    loader_args = {"batch_size": args.batch_size, "num_workers": args.num_workers}
     
     train_set = ThingsMEGDataset("train", args.data_dir)
     train_loader = torch.utils.data.DataLoader(train_set, shuffle=True, **loader_args)
@@ -42,8 +41,7 @@ def run(args: DictConfig):
     # ------------------
     model = BasicConvClassifier(
         train_set.num_classes, train_set.seq_len, train_set.num_channels
-#    ).to(args.device)
-    ).to("cpu")
+    ).to(args.device)
 
     # ------------------
     #     Optimizer
@@ -56,8 +54,7 @@ def run(args: DictConfig):
     max_val_acc = 0
     accuracy = Accuracy(
         task="multiclass", num_classes=train_set.num_classes, top_k=10
-#    ).to(args.device)
-    ).to("cpu")
+    ).to(args.device)
       
     for epoch in range(args.epochs):
         print(f"Epoch {epoch+1}/{args.epochs}")
@@ -66,8 +63,7 @@ def run(args: DictConfig):
         
         model.train()
         for X, y, subject_idxs in tqdm(train_loader, desc="Train"):
-#            X, y = X.to(args.device), y.to(args.device)
-            X, y = X.to("cpu"), y.to("cpu")
+            X, y = X.to(args.device), y.to(args.device)
 
             y_pred = model(X)
             
@@ -83,9 +79,7 @@ def run(args: DictConfig):
 
         model.eval()
         for X, y, subject_idxs in tqdm(val_loader, desc="Validation"):
-#            X, y = X.to(args.device), y.to(args.device)
-            X, y = X.to("cpu"), y.to("cpu")
-
+            X, y = X.to(args.device), y.to(args.device)
             
             with torch.no_grad():
                 y_pred = model(X)
@@ -107,14 +101,12 @@ def run(args: DictConfig):
     # ----------------------------------
     #  Start evaluation with best model
     # ----------------------------------
-#    model.load_state_dict(torch.load(os.path.join(logdir, "model_best.pt"), map_location=args.device))
-    model.load_state_dict(torch.load(os.path.join(logdir, "model_best.pt"), map_location="cpu"))
+    model.load_state_dict(torch.load(os.path.join(logdir, "model_best.pt"), map_location=args.device))
 
     preds = [] 
     model.eval()
     for X, subject_idxs in tqdm(test_loader, desc="Validation"):        
-#        preds.append(model(X.to(args.device)).detach().cpu())
-        preds.append(model(X.to("cpu")).detach().cpu())
+        preds.append(model(X.to(args.device)).detach().cpu())
         
     preds = torch.cat(preds, dim=0).numpy()
     np.save(os.path.join(logdir, "submission"), preds)
