@@ -25,7 +25,7 @@ def run(args: DictConfig):
     # ------------------    
     test_set = ThingsMEGDataset("test", args.data_dir)
     test_loader = torch.utils.data.DataLoader(
-        test_set, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers
+        test_set, shuffle=False, batch_size=args.batch_size, num_workers=0
     )
 
     # ------------------
@@ -33,8 +33,8 @@ def run(args: DictConfig):
     # ------------------
     model = BasicConvClassifier(
         test_set.num_classes, test_set.seq_len, test_set.num_channels
-    ).to(args.device)
-    model.load_state_dict(torch.load(args.model_path, map_location=args.device))
+    ).to("cpu")
+    model.load_state_dict(torch.load(args.model_path, map_location="cpu"))
 
     # ------------------
     #  Start evaluation
@@ -42,7 +42,7 @@ def run(args: DictConfig):
     preds = [] 
     model.eval()
     for X, subject_idxs in tqdm(test_loader, desc="Validation"):        
-        preds.append(model(X.to(args.device)).detach().cpu())
+        preds.append(model(X.to("cpu")).detach().cpu())
         
     preds = torch.cat(preds, dim=0).numpy()
     np.save(os.path.join(savedir, "submission"), preds)
