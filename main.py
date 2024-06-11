@@ -68,10 +68,11 @@ def run(args: DictConfig):
             y_pred = model(X)
             
             loss = F.cross_entropy(y_pred, y)
-            train_loss.append(loss.item())
+            regularization_loss = model.regularization_loss()
+            train_loss = loss + regularization_loss
             
             optimizer.zero_grad()
-            loss.backward()
+            train_loss.backward()
             optimizer.step()
             
             acc = accuracy(y_pred, y)
