@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torchmetrics import Accuracy
+import scipy
 import hydra
 from omegaconf import DictConfig
 import wandb
@@ -11,6 +12,7 @@ from tqdm import tqdm
 
 from src.datasets import ThingsMEGDataset
 from src.models import BasicConvClassifier
+#from src.models import DeeperConvClassifier
 from src.utils import set_seed
 
 @hydra.main(version_base=None, config_path="configs", config_name="config")
@@ -21,19 +23,47 @@ def run(args: DictConfig):
     if args.use_wandb:
         wandb.init(mode="online", dir=logdir, project="MEG-classification")
 
+    def preprocess_data(data):
+        # ベースライン補正（平均を引く）
+        data -= np.mean(data, axis=0)
+    
+        # バンドパスフィルタ（例：0.5-30Hzの帯域を通す）
+        nyquist = 0.5 * 250  # 250Hzのサンプリングレートの場合
+        low = 0.5 / nyquist
+        high = 30 / nyquist
+        b, a = scipy.signal.butter(1, [low, high], btype='band')
+        data = scipy.signal.filtfilt(b, a, data, axis=0)
+    
+        # # デバッグ用に変更前後のデータをプリント
+        # print("Original Data: ", original_data)
+        # print("Preprocessed Data: ", data)
+
+        return data
+
     # ------------------
     #    Dataloader
     # ------------------
     loader_args = {"batch_size": args.batch_size, "num_workers": 0}
-    
+
     train_set = ThingsMEGDataset("train", args.data_dir)
+    train_set.set_preprocess(preprocess_data)  # 前処理関数を設定
     train_loader = torch.utils.data.DataLoader(train_set, shuffle=True, **loader_args)
+
     val_set = ThingsMEGDataset("val", args.data_dir)
+    val_set.set_preprocess(preprocess_data)  # 前処理関数を設定
     val_loader = torch.utils.data.DataLoader(val_set, shuffle=False, **loader_args)
+
     test_set = ThingsMEGDataset("test", args.data_dir)
+    test_set.set_preprocess(preprocess_data)  # 前処理関数を設定
     test_loader = torch.utils.data.DataLoader(
         test_set, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers
     )
+
+    # # データローダーからデータを一つ取り出して確認
+    # for data in train_loader:
+    #     X, y, subject_idxs = data
+    #     print("Loaded Data: ", X)
+    #     break  # 最初のバッチだけ確認
 
     # ------------------
     #       Model
@@ -41,11 +71,14 @@ def run(args: DictConfig):
     model = BasicConvClassifier(
         train_set.num_classes, train_set.seq_len, train_set.num_channels
     ).to("cpu")
+    # model = DeeperConvClassifier(
+    # train_set.num_classes, train_set.seq_len, train_set.num_channels, weight_decay=args.weight_decay
+    # ).to("cpu")
 
     # ------------------
     #     Optimizer
     # ------------------
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
     # ------------------
     #   Start training

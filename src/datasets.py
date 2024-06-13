@@ -36,3 +36,6 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
     @property
     def seq_len(self) -> int:
         return self.X.shape[2]
+    
+    def set_preprocess(self, preprocess_func):
+        self.preprocess_func = preprocess_func
