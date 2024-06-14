@@ -23,21 +23,20 @@ def run(args: DictConfig):
     if args.use_wandb:
         wandb.init(mode="online", dir=logdir, project="MEG-classification")
 
-    def preprocess_data(data):
+    def preprocess_data(data, sampling_rate=250, low_cut=0.5, high_cut=30, filter_order=1):
         # ベースライン補正（平均を引く）
         data -= np.mean(data, axis=0)
     
-        # バンドパスフィルタ（例：0.5-30Hzの帯域を通す）
-        nyquist = 0.5 * 250  # 250Hzのサンプリングレートの場合
-        low = 0.5 / nyquist
-        high = 30 / nyquist
-        b, a = scipy.signal.butter(1, [low, high], btype='band')
+        # バンドパスフィルタ
+        nyquist = 0.5 * sampling_rate
+        low = low_cut / nyquist
+        high = high_cut / nyquist
+        b, a = scipy.signal.butter(filter_order, [low, high], btype='band')
         data = scipy.signal.filtfilt(b, a, data, axis=0)
     
-        # # デバッグ用に変更前後のデータをプリント
-        # print("Original Data: ", original_data)
-        # print("Preprocessed Data: ", data)
-
+        # 正規化（0から1の範囲にスケーリング）
+        data = (data - np.min(data)) / (np.max(data) - np.min(data))
+    
         return data
 
     # ------------------
