@@ -32,10 +32,10 @@ def run(args: DictConfig):
     train_loader = torch.utils.data.DataLoader(train_set, shuffle=True, **loader_args)
 
     val_set = ThingsMEGDataset(split='val', data_dir=args.data_dir, preprocess_func=preprocess)
-    val_loader = torch.utils.data.DataLoader(val_set, shuffle=True, **loader_args)
+    val_loader = torch.utils.data.DataLoader(val_set, shuffle=False, **loader_args)
 
     test_set = ThingsMEGDataset(split='test', data_dir=args.data_dir, preprocess_func=preprocess)
-    test_loader = torch.utils.data.DataLoader(test_set, shuffle=True, **loader_args)
+    test_loader = torch.utils.data.DataLoader(test_set, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers)
 
     # ------------------
     #       Model
@@ -61,7 +61,7 @@ def run(args: DictConfig):
     for epoch in range(args.epochs):
         print(f"Epoch {epoch+1}/{args.epochs}")
         
-        train_losses, train_accs, val_losses, val_accs = [], [], [], []
+        train_loss, train_acc, val_loss, val_acc = [], [], [], []
         
         model.train()
         for X, y, subject_idxs in tqdm(train_loader, desc="Train"):
@@ -78,8 +78,7 @@ def run(args: DictConfig):
             optimizer.step()
             
             acc = accuracy(y_pred, y)
-            train_losses.append(total_loss.item())  # 損失をリストに追加
-            train_accs.append(acc.item())  # 精度をリストに追加
+            train_acc.append(acc.item())
 
         model.eval()
         for X, y, subject_idxs in tqdm(val_loader, desc="Validation"):
@@ -88,23 +87,18 @@ def run(args: DictConfig):
             with torch.no_grad():
                 y_pred = model(X)
             
-            val_losses.append(F.cross_entropy(y_pred, y).item())
-            val_accs.append(accuracy(y_pred, y).item())
+            val_loss.append(F.cross_entropy(y_pred, y).item())
+            val_acc.append(accuracy(y_pred, y).item())
 
-        epoch_train_loss = np.mean(train_losses)
-        epoch_train_acc = np.mean(train_accs)
-        epoch_val_loss = np.mean(val_losses)
-        epoch_val_acc = np.mean(val_accs)
-
-        print(f"Epoch {epoch+1}/{args.epochs} | train loss: {epoch_train_loss:.3f} | train acc: {epoch_train_acc:.3f} | val loss: {epoch_val_loss:.3f} | val acc: {epoch_val_acc:.3f}")
+        print(f"Epoch {epoch+1}/{args.epochs} | train loss: {np.mean(train_loss):.3f} | train acc: {np.mean(train_acc):.3f} | val loss: {np.mean(val_loss):.3f} | val acc: {np.mean(val_acc):.3f}")
         torch.save(model.state_dict(), os.path.join(logdir, "model_last.pt"))
         if args.use_wandb:
-            wandb.log({"train_loss": epoch_train_loss, "train_acc": epoch_train_acc, "val_loss": epoch_val_loss, "val_acc": epoch_val_acc})
+            wandb.log({"train_loss": np.mean(train_loss), "train_acc": np.mean(train_acc), "val_loss": np.mean(val_loss), "val_acc": np.mean(val_acc)})
         
-        if epoch_val_acc > max_val_acc:
+        if np.mean(val_acc) > max_val_acc:
             cprint("New best.", "cyan")
             torch.save(model.state_dict(), os.path.join(logdir, "model_best.pt"))
-            max_val_acc = epoch_val_acc
+            max_val_acc = np.mean(val_acc)
             
     # ----------------------------------
     #  Start evaluation with best model
