@@ -11,9 +11,9 @@ from termcolor import cprint
 from tqdm import tqdm
 
 from src.datasets import ThingsMEGDataset
-#from src.models import BasicConvClassifier
-from src.models import ImprovedConvClassifier
+from src.models import BasicConvClassifier
 from src.utils import set_seed
+from src.utils import preprocess
 
 @hydra.main(version_base=None, config_path="configs", config_name="config")
 def run(args: DictConfig):
@@ -23,56 +23,27 @@ def run(args: DictConfig):
     if args.use_wandb:
         wandb.init(mode="online", dir=logdir, project="MEG-classification")
 
-    def preprocess_data(data, sampling_rate=250, low_cut=0.5, high_cut=30, filter_order=1):
-        # ベースライン補正（平均を引く）
-        data -= np.mean(data, axis=0)
-    
-        # バンドパスフィルタ
-        nyquist = 0.5 * sampling_rate
-        low = low_cut / nyquist
-        high = high_cut / nyquist
-        b, a = scipy.signal.butter(filter_order, [low, high], btype='band')
-        data = scipy.signal.filtfilt(b, a, data, axis=0)
-    
-        # 正規化（0から1の範囲にスケーリング）
-        data = (data - np.min(data)) / (np.max(data) - np.min(data))
-    
-        return data
-
     # ------------------
     #    Dataloader
     # ------------------
     loader_args = {"batch_size": args.batch_size, "num_workers": 0}
 
-    train_set = ThingsMEGDataset("train", args.data_dir)
-    train_set.set_preprocess(preprocess_data)  # 前処理関数を設定
+    train_set = ThingsMEGDataset(split='train', data_dir=args.data_dir, preprocess_func=preprocess)
     train_loader = torch.utils.data.DataLoader(train_set, shuffle=True, **loader_args)
 
-    val_set = ThingsMEGDataset("val", args.data_dir)
-    val_set.set_preprocess(preprocess_data)  # 前処理関数を設定
-    val_loader = torch.utils.data.DataLoader(val_set, shuffle=False, **loader_args)
+    val_set = ThingsMEGDataset(split='val', data_dir=args.data_dir, preprocess_func=preprocess)
+    val_loader = torch.utils.data.DataLoader(val_set, shuffle=True, **loader_args)
 
-    test_set = ThingsMEGDataset("test", args.data_dir)
-    test_set.set_preprocess(preprocess_data)  # 前処理関数を設定
-    test_loader = torch.utils.data.DataLoader(
-        test_set, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers
-    )
-
-    # # データローダーからデータを一つ取り出して確認
-    # for data in train_loader:
-    #     X, y, subject_idxs = data
-    #     print("Loaded Data: ", X)
-    #     break  # 最初のバッチだけ確認
+    test_set = ThingsMEGDataset(split='test', data_dir=args.data_dir, preprocess_func=preprocess)
+    test_loader = torch.utils.data.DataLoader(test_set, shuffle=True, **loader_args)
 
     # ------------------
     #       Model
     # ------------------
-    model = ImprovedConvClassifier(
-        train_set.num_classes, train_set.seq_len, train_set.num_channels
+
+    model = BasicConvClassifier(
+        train_set.num_classes, train_set.seq_len, train_set.num_channels, weight_decay=args.weight_decay
     ).to("cpu")
-    # model = DeeperConvClassifier(
-    # train_set.num_classes, train_set.seq_len, train_set.num_channels, weight_decay=args.weight_decay
-    # ).to("cpu")
 
     # ------------------
     #     Optimizer

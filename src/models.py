@@ -86,47 +86,47 @@ class ConvBlock(nn.Module):
 
         return self.dropout(X)
     
-class ImprovedConvClassifier(nn.Module):
-    def __init__(self, num_classes, seq_len, num_channels, weight_decay=0.001):
-        super(ImprovedConvClassifier, self).__init__()
-        self.weight_decay = weight_decay
+# class ImprovedConvClassifier(nn.Module):
+#     def __init__(self, num_classes, seq_len, num_channels, weight_decay=0.001):
+#         super(ImprovedConvClassifier, self).__init__()
+#         self.weight_decay = weight_decay
 
-        self.conv1 = nn.Conv1d(num_channels, 64, kernel_size=3, stride=1, padding=1)
-        self.bn1 = nn.BatchNorm1d(64)
-        self.conv2 = nn.Conv1d(64, 128, kernel_size=3, stride=1, padding=1)
-        self.bn2 = nn.BatchNorm1d(128)
-        self.conv3 = nn.Conv1d(128, 256, kernel_size=3, stride=1, padding=1)
-        self.bn3 = nn.BatchNorm1d(256)
-        self.conv4 = nn.Conv1d(256, 512, kernel_size=3, stride=1, padding=1)
-        self.bn4 = nn.BatchNorm1d(512)
-        self.pool = nn.MaxPool1d(kernel_size=2, stride=2)
+#         self.conv1 = nn.Conv1d(num_channels, 64, kernel_size=3, stride=1, padding=1)
+#         self.bn1 = nn.BatchNorm1d(64)
+#         self.conv2 = nn.Conv1d(64, 128, kernel_size=3, stride=1, padding=1)
+#         self.bn2 = nn.BatchNorm1d(128)
+#         self.conv3 = nn.Conv1d(128, 256, kernel_size=3, stride=1, padding=1)
+#         self.bn3 = nn.BatchNorm1d(256)
+#         self.conv4 = nn.Conv1d(256, 512, kernel_size=3, stride=1, padding=1)
+#         self.bn4 = nn.BatchNorm1d(512)
+#         self.pool = nn.MaxPool1d(kernel_size=2, stride=2)
 
-        # 入力データの長さに応じて全結合層の入力サイズを計算
-        test_input = torch.randn(1, num_channels, seq_len)
-        flattened_size = self._get_flattened_size(test_input)
+#         # 入力データの長さに応じて全結合層の入力サイズを計算
+#         test_input = torch.randn(1, num_channels, seq_len)
+#         flattened_size = self._get_flattened_size(test_input)
 
-        self.fc1 = nn.Linear(flattened_size, 512)
-        self.fc2 = nn.Linear(512, num_classes)
+#         self.fc1 = nn.Linear(flattened_size, 512)
+#         self.fc2 = nn.Linear(512, num_classes)
 
-    def _get_flattened_size(self, x):
-        x = self.pool(F.relu(self.bn1(self.conv1(x))))
-        x = self.pool(F.relu(self.bn2(self.conv2(x))))
-        x = self.pool(F.relu(self.bn3(self.conv3(x))))
-        x = self.pool(F.relu(self.bn4(self.conv4(x))))
-        return x.view(x.size(0), -1).size(1)
+#     def _get_flattened_size(self, x):
+#         x = self.pool(F.relu(self.bn1(self.conv1(x))))
+#         x = self.pool(F.relu(self.bn2(self.conv2(x))))
+#         x = self.pool(F.relu(self.bn3(self.conv3(x))))
+#         x = self.pool(F.relu(self.bn4(self.conv4(x))))
+#         return x.view(x.size(0), -1).size(1)
 
-    def forward(self, x):
-        x = self.pool(F.relu(self.bn1(self.conv1(x))))
-        x = self.pool(F.relu(self.bn2(self.conv2(x))))
-        x = self.pool(F.relu(self.bn3(self.conv3(x))))
-        x = self.pool(F.relu(self.bn4(self.conv4(x))))
-        x = x.view(x.size(0), -1)
-        x = F.relu(self.fc1(x))
-        x = self.fc2(x)
-        return x
+#     def forward(self, x):
+#         x = self.pool(F.relu(self.bn1(self.conv1(x))))
+#         x = self.pool(F.relu(self.bn2(self.conv2(x))))
+#         x = self.pool(F.relu(self.bn3(self.conv3(x))))
+#         x = self.pool(F.relu(self.bn4(self.conv4(x))))
+#         x = x.view(x.size(0), -1)
+#         x = F.relu(self.fc1(x))
+#         x = self.fc2(x)
+#         return x
 
-    def regularization_loss(self):
-        l2_reg = 0
-        for param in self.parameters():
-            l2_reg += torch.sum(param ** 2)
-        return self.weight_decay * 0.5 * l2_reg
+#     def regularization_loss(self):
+#         l2_reg = 0
+#         for param in self.parameters():
+#             l2_reg += torch.sum(param ** 2)
+#         return self.weight_decay * 0.5 * l2_reg
