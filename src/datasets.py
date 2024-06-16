@@ -26,14 +26,10 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
         return len(self.X)
 
     def __getitem__(self, i):
-        x, subject_idx = self.X[i], self.subject_idxs[i]
-        if self.preprocess_func is not None:
-            x = self.preprocess_func(x)
-        
         if hasattr(self, "y"):
-            return x, self.y[i], subject_idx
+            return self.X[i], self.y[i], self.subject_idxs[i]
         else:
-            return x, subject_idx
+            return self.X[i], self.subject_idxs[i]
        
     @property
     def num_channels(self) -> int:

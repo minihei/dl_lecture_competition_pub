@@ -3,7 +3,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torchmetrics import Accuracy
-import scipy
 import hydra
 from omegaconf import DictConfig
 import wandb
@@ -30,19 +29,31 @@ def run(args: DictConfig):
 
     train_set = ThingsMEGDataset(split='train', data_dir=args.data_dir, preprocess_func=preprocess)
     train_loader = torch.utils.data.DataLoader(train_set, shuffle=True, **loader_args)
+    for X, y, subject_idxs in train_loader:
+        print(f"Train Input shape: {X.shape}")
+        break
 
     val_set = ThingsMEGDataset(split='val', data_dir=args.data_dir, preprocess_func=preprocess)
     val_loader = torch.utils.data.DataLoader(val_set, shuffle=False, **loader_args)
+    for X, y, subject_idxs in val_loader:
+        print(f"Val Input shape: {X.shape}")
+        break
 
     test_set = ThingsMEGDataset(split='test', data_dir=args.data_dir, preprocess_func=preprocess)
     test_loader = torch.utils.data.DataLoader(test_set, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers)
+    for X, subject_idxs in test_loader:
+        print(f"Test Input shape: {X.shape}")
+        break
 
     # ------------------
     #       Model
     # ------------------
 
     model = BasicConvClassifier(
-        train_set.num_classes, train_set.seq_len, train_set.num_channels, weight_decay=args.weight_decay
+        train_set.num_classes, 
+        train_set.seq_len, 
+        train_set.num_channels,
+        weight_decay=args.weight_decay
     ).to("cpu")
 
     # ------------------
@@ -71,10 +82,10 @@ def run(args: DictConfig):
             
             loss = F.cross_entropy(y_pred, y)
             regularization_loss = model.regularization_loss()
-            total_loss = loss + regularization_loss
+            train_loss = loss + regularization_loss
             
             optimizer.zero_grad()
-            total_loss.backward()
+            train_loss.backward()
             optimizer.step()
             
             acc = accuracy(y_pred, y)
