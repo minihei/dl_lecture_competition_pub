@@ -10,7 +10,8 @@ from termcolor import cprint
 from tqdm import tqdm
 
 from src.datasets import ThingsMEGDataset
-from src.models import BasicConvClassifier
+#from src.models import BasicConvClassifier
+from src.models import DeepConvClassifier
 from src.utils import set_seed
 from src.utils import preprocess
 
@@ -29,32 +30,33 @@ def run(args: DictConfig):
 
     train_set = ThingsMEGDataset(split='train', data_dir=args.data_dir, preprocess_func=preprocess)
     train_loader = torch.utils.data.DataLoader(train_set, shuffle=True, **loader_args)
-    for X, y, subject_idxs in train_loader:
-        print(f"Train Input shape: {X.shape}")
-        break
+    print(f"Train Input shape: {train_set[0][0].shape}")    #20240616追加
 
     val_set = ThingsMEGDataset(split='val', data_dir=args.data_dir, preprocess_func=preprocess)
     val_loader = torch.utils.data.DataLoader(val_set, shuffle=False, **loader_args)
-    for X, y, subject_idxs in val_loader:
-        print(f"Val Input shape: {X.shape}")
-        break
+    print(f"Val Input shape: {val_set[0][0].shape}")    #20240616追加
 
     test_set = ThingsMEGDataset(split='test', data_dir=args.data_dir, preprocess_func=preprocess)
     test_loader = torch.utils.data.DataLoader(test_set, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers)
-    for X, subject_idxs in test_loader:
-        print(f"Test Input shape: {X.shape}")
-        break
+    print(f"Test Input shape: {test_set[0][0].shape}")    #20240616追加
 
     # ------------------
     #       Model
     # ------------------
 
-    model = BasicConvClassifier(
+    model = DeepConvClassifier(
         train_set.num_classes, 
-        train_set.seq_len, 
+        #train_set.seq_len,     #20240616変更
         train_set.num_channels,
         weight_decay=args.weight_decay
     ).to("cpu")
+
+    # model = BasicConvClassifier(
+    #     train_set.num_classes, 
+    #     train_set.seq_len, 
+    #     train_set.num_channels,
+    #     weight_decay=args.weight_decay
+    # ).to("cpu")
 
     # ------------------
     #     Optimizer

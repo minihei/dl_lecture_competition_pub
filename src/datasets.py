@@ -26,11 +26,20 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
         return len(self.X)
 
     def __getitem__(self, i):
+        x, subject_idx = self.X[i], self.subject_idxs[i]
+        if self.preprocess_func is not None:
+            x = self.preprocess_func(x.numpy())  # TensorからNumpy配列に変換して前処理を適用
+            x = torch.tensor(x)  # 再度Tensorに変換
         if hasattr(self, "y"):
             return self.X[i], self.y[i], self.subject_idxs[i]
         else:
             return self.X[i], self.subject_idxs[i]
-       
+
+        # if hasattr(self, "y"):
+        #     return x, self.y[i], subject_idx
+        # else:
+        #     return x, subject_idx
+
     @property
     def num_channels(self) -> int:
         return self.X.shape[1]

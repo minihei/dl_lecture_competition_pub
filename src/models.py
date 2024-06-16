@@ -48,6 +48,81 @@ class BasicConvClassifier(nn.Module):
 
 
 
+# class ConvBlock(nn.Module):
+#     def __init__(
+#         self,
+#         in_dim,
+#         out_dim,
+#         kernel_size: int = 3,
+#         p_drop: float = 0.1,
+#     ) -> None:
+#         super().__init__()
+        
+#         self.in_dim = in_dim
+#         self.out_dim = out_dim
+
+#         self.conv0 = nn.Conv1d(in_dim, out_dim, kernel_size, padding="same")
+#         self.conv1 = nn.Conv1d(out_dim, out_dim, kernel_size, padding="same")
+#         # self.conv2 = nn.Conv1d(out_dim, out_dim, kernel_size) # , padding="same")
+        
+#         self.batchnorm0 = nn.BatchNorm1d(num_features=out_dim)
+#         self.batchnorm1 = nn.BatchNorm1d(num_features=out_dim)
+
+#         self.dropout = nn.Dropout(p_drop)
+
+#     def forward(self, X: torch.Tensor) -> torch.Tensor:
+#         if self.in_dim == self.out_dim:
+#             X = self.conv0(X) + X  # skip connection
+#         else:
+#             X = self.conv0(X)
+
+#         X = F.gelu(self.batchnorm0(X))
+
+#         X = self.conv1(X) + X  # skip connection
+#         X = F.gelu(self.batchnorm1(X))
+
+#         # X = self.conv2(X)
+#         # X = F.glu(X, dim=-2)
+
+#         return self.dropout(X)
+
+
+######追加モデル分###################################################################
+
+class DeepConvClassifier(nn.Module):
+    def __init__(
+        self,
+        num_classes: int,
+        in_channels: int,
+        hid_dim: int = 128,
+        dropout_rate: float = 0.5,
+        weight_decay: float = 1e-4
+    ) -> None:
+        super().__init__()
+
+        self.blocks = nn.Sequential(
+            ConvBlock(in_channels, hid_dim),
+            ConvBlock(hid_dim, hid_dim),
+            ConvBlock(hid_dim, hid_dim * 2),
+            ConvBlock(hid_dim * 2, hid_dim * 2),
+            nn.AdaptiveAvgPool1d(1),  # (batch_size, hid_dim*2, 1)
+            nn.Flatten(),  # (batch_size, hid_dim*2)
+            nn.Dropout(dropout_rate),
+            nn.Linear(hid_dim * 2, num_classes),
+        )
+        
+        self.weight_decay = weight_decay
+
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
+        X = self.blocks(X)
+        return X
+
+    def regularization_loss(self):
+        l2_reg = 0
+        for param in self.parameters():
+            l2_reg += torch.sum(param ** 2)
+        return self.weight_decay * 0.5 * l2_reg
+
 class ConvBlock(nn.Module):
     def __init__(
         self,
@@ -57,14 +132,13 @@ class ConvBlock(nn.Module):
         p_drop: float = 0.1,
     ) -> None:
         super().__init__()
-        
+
         self.in_dim = in_dim
         self.out_dim = out_dim
 
         self.conv0 = nn.Conv1d(in_dim, out_dim, kernel_size, padding="same")
         self.conv1 = nn.Conv1d(out_dim, out_dim, kernel_size, padding="same")
-        # self.conv2 = nn.Conv1d(out_dim, out_dim, kernel_size) # , padding="same")
-        
+
         self.batchnorm0 = nn.BatchNorm1d(num_features=out_dim)
         self.batchnorm1 = nn.BatchNorm1d(num_features=out_dim)
 
@@ -81,7 +155,5 @@ class ConvBlock(nn.Module):
         X = self.conv1(X) + X  # skip connection
         X = F.gelu(self.batchnorm1(X))
 
-        # X = self.conv2(X)
-        # X = F.glu(X, dim=-2)
-
         return self.dropout(X)
+    
