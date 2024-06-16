@@ -77,8 +77,11 @@ def run(args: DictConfig):
         model.train()
         for X, y, subject_idxs in tqdm(train_loader, desc="Train"):
             X, y = X.to("cpu"), y.to("cpu")
-            subject_one_hot = F.one_hot(subject_idxs, num_classes=4).float().unsqueeze(2).expand(-1, -1, X.size(2))
-            X = torch.cat([X, subject_one_hot], dim=1)   # チャンネル次元で被験者情報を追加（subject_one_hot）　20240616
+
+            # 被験者情報を one-hot encoding し、チャネル次元を追加
+            subject_one_hot = torch.nn.functional.one_hot(subject_idxs, num_classes=4).float().unsqueeze(2).unsqueeze(3)
+            # チャネル次元で被験者情報を追加
+            X = torch.cat([X, subject_one_hot], dim=1)  #20240616
 
             y_pred = model(X)
             
@@ -97,9 +100,12 @@ def run(args: DictConfig):
         model.eval()
         for X, y, subject_idxs in tqdm(val_loader, desc="Validation"):
             X, y = X.to("cpu"), y.to("cpu")
-            subject_one_hot = F.one_hot(subject_idxs, num_classes=4).float().unsqueeze(2).expand(-1, -1, X.size(2))
-            X = torch.cat([X, subject_one_hot], dim=1)  # チャンネル次元で被験者情報を2行追加（subject_one_hot）　20240616
-            
+
+            # 被験者情報を one-hot encoding し、チャネル次元を追加
+            subject_one_hot = torch.nn.functional.one_hot(subject_idxs, num_classes=4).float().unsqueeze(2).unsqueeze(3)
+            # チャネル次元で被験者情報を追加　20240616
+            X = torch.cat([X, subject_one_hot], dim=1)
+
             with torch.no_grad():
                 y_pred = model(X)
             
