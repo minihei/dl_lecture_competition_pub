@@ -30,16 +30,13 @@ def run(args: DictConfig):
 
     train_set = ThingsMEGDataset(split='train', data_dir=args.data_dir, preprocess_func=preprocess)
     train_loader = torch.utils.data.DataLoader(train_set, shuffle=True, **loader_args)
-    print(f"Train Input shape: {train_set[0][0].shape}")    #20240616追加
-
+    
     val_set = ThingsMEGDataset(split='val', data_dir=args.data_dir, preprocess_func=preprocess)
     val_loader = torch.utils.data.DataLoader(val_set, shuffle=False, **loader_args)
-    print(f"Val Input shape: {val_set[0][0].shape}")    #20240616追加
-
+    
     test_set = ThingsMEGDataset(split='test', data_dir=args.data_dir, preprocess_func=preprocess)
     test_loader = torch.utils.data.DataLoader(test_set, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers)
-    print(f"Test Input shape: {test_set[0][0].shape}")    #20240616追加
-
+    
     # ------------------
     #       Model
     # ------------------
@@ -47,7 +44,8 @@ def run(args: DictConfig):
     model = DeepConvClassifier(
         train_set.num_classes, 
         #train_set.seq_len,     #20240616変更
-        train_set.num_channels,
+        in_channels=train_set.num_channels + 4,  # 被験者の情報を追加するためにチャンネル数を+4（4被験者の場合）
+        #train_set.num_channels,#20240616上記に変更
         weight_decay=args.weight_decay
     ).to("cpu")
 
@@ -79,6 +77,8 @@ def run(args: DictConfig):
         model.train()
         for X, y, subject_idxs in tqdm(train_loader, desc="Train"):
             X, y = X.to("cpu"), y.to("cpu")
+            subject_one_hot = F.one_hot(subject_idxs, num_classes=4).float().unsqueeze(2).expand(-1, -1, X.size(2))
+            X = torch.cat([X, subject_one_hot], dim=1)   # チャンネル次元で被験者情報を追加（subject_one_hot）　20240616
 
             y_pred = model(X)
             
@@ -97,6 +97,8 @@ def run(args: DictConfig):
         model.eval()
         for X, y, subject_idxs in tqdm(val_loader, desc="Validation"):
             X, y = X.to("cpu"), y.to("cpu")
+            subject_one_hot = F.one_hot(subject_idxs, num_classes=4).float().unsqueeze(2).expand(-1, -1, X.size(2))
+            X = torch.cat([X, subject_one_hot], dim=1)  # チャンネル次元で被験者情報を2行追加（subject_one_hot）　20240616
             
             with torch.no_grad():
                 y_pred = model(X)
@@ -126,7 +128,9 @@ def run(args: DictConfig):
 
     preds = [] 
     model.eval()
-    for X, subject_idxs in tqdm(test_loader, desc="Validation"):        
+    for X, subject_idxs in tqdm(test_loader, desc="Validation"):
+        subject_one_hot = F.one_hot(subject_idxs, num_classes=4).float().unsqueeze(2).expand(-1, -1, X.size(2))
+        X = torch.cat([X, subject_one_hot], dim=1)  # チャンネル次元で被験者情報を追加  20240616 2行追加        
         preds.append(model(X.to("cpu")).detach().cpu())
         
     preds = torch.cat(preds, dim=0).numpy()
