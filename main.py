@@ -10,8 +10,7 @@ from termcolor import cprint
 from tqdm import tqdm
 
 from src.datasets import ThingsMEGDataset
-#from src.models import BasicConvClassifier
-from src.models import DeepConvClassifier
+from src.models import BasicConvClassifier
 from src.utils import set_seed
 from src.utils import preprocess
 
@@ -30,31 +29,32 @@ def run(args: DictConfig):
 
     train_set = ThingsMEGDataset(split='train', data_dir=args.data_dir, preprocess_func=preprocess)
     train_loader = torch.utils.data.DataLoader(train_set, shuffle=True, **loader_args)
-    
+    for X, y, subject_idxs in train_loader:
+        print(f"Train Input shape: {X.shape}")
+        break
+
     val_set = ThingsMEGDataset(split='val', data_dir=args.data_dir, preprocess_func=preprocess)
     val_loader = torch.utils.data.DataLoader(val_set, shuffle=False, **loader_args)
-    
+    for X, y, subject_idxs in val_loader:
+        print(f"Val Input shape: {X.shape}")
+        break
+
     test_set = ThingsMEGDataset(split='test', data_dir=args.data_dir, preprocess_func=preprocess)
     test_loader = torch.utils.data.DataLoader(test_set, shuffle=False, batch_size=args.batch_size, num_workers=args.num_workers)
-    
+    for X, subject_idxs in test_loader:
+        print(f"Test Input shape: {X.shape}")
+        break
+
     # ------------------
     #       Model
     # ------------------
 
-    model = DeepConvClassifier(
+    model = BasicConvClassifier(
         train_set.num_classes, 
-        #train_set.seq_len,     #20240616変更
-        in_channels=train_set.num_channels + 4,  # 被験者の情報を追加するためにチャンネル数を+4（4被験者の場合）
-        #train_set.num_channels,#20240616上記に変更
+        train_set.seq_len, 
+        train_set.num_channels,
         weight_decay=args.weight_decay
     ).to("cpu")
-
-    # model = BasicConvClassifier(
-    #     train_set.num_classes, 
-    #     train_set.seq_len, 
-    #     train_set.num_channels,
-    #     weight_decay=args.weight_decay
-    # ).to("cpu")
 
     # ------------------
     #     Optimizer
@@ -78,12 +78,6 @@ def run(args: DictConfig):
         for X, y, subject_idxs in tqdm(train_loader, desc="Train"):
             X, y = X.to("cpu"), y.to("cpu")
 
-            # 被験者情報を one-hot encoding し、チャネル次元を追加  #20240616
-            subject_one_hot = torch.nn.functional.one_hot(subject_idxs, num_classes=4).float().unsqueeze(2).unsqueeze(3)
-            subject_one_hot = subject_one_hot.expand(-1, -1, X.size(2), X.size(2))
-            # チャネル次元で被験者情報を追加
-            X = torch.cat([X, subject_one_hot], dim=1)
-
             y_pred = model(X)
             
             loss = F.cross_entropy(y_pred, y)
@@ -101,13 +95,7 @@ def run(args: DictConfig):
         model.eval()
         for X, y, subject_idxs in tqdm(val_loader, desc="Validation"):
             X, y = X.to("cpu"), y.to("cpu")
-
-            #被験者情報を one-hot encoding し、チャネル次元を追加  #20240616
-            subject_one_hot = torch.nn.functional.one_hot(subject_idxs, num_classes=4).float().unsqueeze(2).unsqueeze(3)
-            subject_one_hot = subject_one_hot.expand(-1, -1, X.size(2), X.size(2))
-            # チャネル次元で被験者情報を追加
-            X = torch.cat([X, subject_one_hot], dim=1)
-
+            
             with torch.no_grad():
                 y_pred = model(X)
             
@@ -136,10 +124,7 @@ def run(args: DictConfig):
 
     preds = [] 
     model.eval()
-    for X, subject_idxs in tqdm(test_loader, desc="Validation"):
-        subject_one_hot = torch.nn.functional.one_hot(subject_idxs, num_classes=4).float().unsqueeze(2).unsqueeze(3)
-        subject_one_hot = subject_one_hot.expand(-1, -1, X.size(2))
-        X = torch.cat([X, subject_one_hot], dim=1)
+    for X, subject_idxs in tqdm(test_loader, desc="Validation"):        
         preds.append(model(X.to("cpu")).detach().cpu())
         
     preds = torch.cat(preds, dim=0).numpy()
