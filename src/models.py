@@ -10,7 +10,7 @@ class BasicConvClassifier(nn.Module):
         num_classes: int,
         seq_len: int, 
         in_channels: int,
-        hid_dim: int = 128,
+        hid_dim: int = 256,
         dropout_rate: float = 0.5, #追加
         weight_decay: float = 1e-4  #追加
     ) -> None:
@@ -30,12 +30,6 @@ class BasicConvClassifier(nn.Module):
         self.weight_decay = weight_decay #追加
 
     def forward(self, X: torch.Tensor) -> torch.Tensor:
-        """_summary_
-        Args:
-            X ( b, c, t ): *description*
-        Returns:
-            X ( b, num_classes ): *description*
-        """
         X = self.blocks(X)
         return self.head(X)
 
@@ -46,45 +40,6 @@ class BasicConvClassifier(nn.Module):
             l2_reg += torch.sum(param ** 2) #追加
         return self.weight_decay * 0.5 * l2_reg #追加
 
-
-
-class ConvBlock(nn.Module):
-    def __init__(
-        self,
-        in_dim,
-        out_dim,
-        kernel_size: int = 3,
-        p_drop: float = 0.1,
-    ) -> None:
-        super().__init__()
-        
-        self.in_dim = in_dim
-        self.out_dim = out_dim
-
-        self.conv0 = nn.Conv1d(in_dim, out_dim, kernel_size, padding="same")
-        self.conv1 = nn.Conv1d(out_dim, out_dim, kernel_size, padding="same")
-        # self.conv2 = nn.Conv1d(out_dim, out_dim, kernel_size) # , padding="same")
-        
-        self.batchnorm0 = nn.BatchNorm1d(num_features=out_dim)
-        self.batchnorm1 = nn.BatchNorm1d(num_features=out_dim)
-
-        self.dropout = nn.Dropout(p_drop)
-
-    def forward(self, X: torch.Tensor) -> torch.Tensor:
-        if self.in_dim == self.out_dim:
-            X = self.conv0(X) + X  # skip connection
-        else:
-            X = self.conv0(X)
-
-        X = F.gelu(self.batchnorm0(X))
-
-        X = self.conv1(X) + X  # skip connection
-        X = F.gelu(self.batchnorm1(X))
-
-        # X = self.conv2(X)
-        # X = F.glu(X, dim=-2)
-
-        return self.dropout(X)
 
 
 ######追加モデル分###################################################################
@@ -123,37 +78,40 @@ class ConvBlock(nn.Module):
 #             l2_reg += torch.sum(param ** 2)
 #         return self.weight_decay * 0.5 * l2_reg
 
-# class ConvBlock(nn.Module):
-#     def __init__(
-#         self,
-#         in_dim,
-#         out_dim,
-#         kernel_size: int = 3,
-#         p_drop: float = 0.1,
-#     ) -> None:
-#         super().__init__()
+class ConvBlock(nn.Module):
+    def __init__(
+        self,
+        in_dim,
+        out_dim,
+        kernel_size: int = 3,
+        p_drop: float = 0.1,
+    ) -> None:
+        super().__init__()
 
-#         self.in_dim = in_dim
-#         self.out_dim = out_dim
+        self.in_dim = in_dim
+        self.out_dim = out_dim
 
-#         self.conv0 = nn.Conv1d(in_dim, out_dim, kernel_size, padding="same")
-#         self.conv1 = nn.Conv1d(out_dim, out_dim, kernel_size, padding="same")
+        self.conv0 = nn.Conv1d(in_dim, out_dim, kernel_size, padding="same")
+        self.conv1 = nn.Conv1d(out_dim, out_dim, kernel_size, padding="same")
 
-#         self.batchnorm0 = nn.BatchNorm1d(num_features=out_dim)
-#         self.batchnorm1 = nn.BatchNorm1d(num_features=out_dim)
+        self.batchnorm0 = nn.BatchNorm1d(num_features=out_dim)
+        self.batchnorm1 = nn.BatchNorm1d(num_features=out_dim)
 
-#         self.dropout = nn.Dropout(p_drop)
+        self.dropout = nn.Dropout(p_drop)
 
-#     def forward(self, X: torch.Tensor) -> torch.Tensor:
-#         if self.in_dim == self.out_dim:
-#             X = self.conv0(X) + X  # skip connection
-#         else:
-#             X = self.conv0(X)
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
+        if self.in_dim == self.out_dim:
+            X = self.conv0(X) + X  # skip connection
+        else:
+            X = self.conv0(X)
 
-#         X = F.gelu(self.batchnorm0(X))
+        X = F.gelu(self.batchnorm0(X))
 
-#         X = self.conv1(X) + X  # skip connection
-#         X = F.gelu(self.batchnorm1(X))
+        X = self.conv1(X) + X  # skip connection
+        X = F.gelu(self.batchnorm1(X))
 
-#         return self.dropout(X)
+        return self.dropout(X)
+    
+
+
     

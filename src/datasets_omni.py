@@ -1,0 +1,46 @@
+import os
+import numpy as np
+import torch
+from typing import Tuple
+from termcolor import cprint
+from glob import glob
+
+class ThingsMEGDataset(torch.utils.data.Dataset):
+    def __init__(self, split: str, data_dir: str = "data", preprocess_func=None) -> None:
+        super().__init__()
+
+        self.preprocess_func = preprocess_func
+       
+        assert split in ["train", "val", "test"], f"Invalid split: {split}"
+        self.split = split
+        self.data_dir = data_dir
+        self.num_classes = 1854
+        self.num_samples = len(glob(os.path.join(data_dir, f"{split}_X", "*.npy")))
+
+        self.X = torch.load(os.path.join(data_dir, f"{split}_X.pt"))
+        self.subject_idxs = torch.load(os.path.join(data_dir, f"{split}_subject_idxs.pt"))
+        
+        if split in ["train", "val"]:
+            self.y = torch.load(os.path.join(data_dir, f"{split}_y.pt"))
+            assert len(torch.unique(self.y)) == self.num_classes, "Number of classes do not match."
+
+    def __len__(self) -> int:
+        return self.num_samples
+
+    def __getitem__(self, i):
+        x, subject_idx = self.X[i], self.subject_idxs[i]
+        if self.preprocess_func is not None:
+            x = self.preprocess_func(x.numpy())  # TensorからNumpy配列に変換して前処理を適用
+            x = torch.tensor(x)  # 再度Tensorに変換
+        if hasattr(self, "y"):
+            return self.X[i], self.y[i], self.subject_idxs[i]
+        else:
+            return self.X[i], self.subject_idxs[i]
+
+    @property
+    def num_channels(self) -> int:
+        return self.X.shape[1]
+    
+    @property
+    def seq_len(self) -> int:
+        return self.X.shape[2]
