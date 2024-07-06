@@ -17,30 +17,28 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
         self.num_classes = 1854
         self.num_samples = len(glob(os.path.join(data_dir, f"{split}_X", "*.npy")))
 
-        self.X = torch.load(os.path.join(data_dir, f"{split}_X.pt"))
-        self.subject_idxs = torch.load(os.path.join(data_dir, f"{split}_subject_idxs.pt"))
-        
-        if split in ["train", "val"]:
-            self.y = torch.load(os.path.join(data_dir, f"{split}_y.pt"))
-            assert len(torch.unique(self.y)) == self.num_classes, "Number of classes do not match."
-
     def __len__(self) -> int:
         return self.num_samples
 
     def __getitem__(self, i):
-        x, subject_idx = self.X[i], self.subject_idxs[i]
-        if self.preprocess_func is not None:
-            x = self.preprocess_func(x.numpy())  # TensorからNumpy配列に変換して前処理を適用
-            x = torch.tensor(x)  # 再度Tensorに変換
-        if hasattr(self, "y"):
-            return self.X[i], self.y[i], self.subject_idxs[i]
+        X_path = os.path.join(self.data_dir, f"{self.split}_X", str(i).zfill(5) + ".npy")
+        X = torch.from_numpy(np.load(X_path))
+        
+        subject_idx_path = os.path.join(self.data_dir, f"{self.split}_subject_idxs", str(i).zfill(5) + ".npy")
+        subject_idx = torch.from_numpy(np.load(subject_idx_path))
+        
+        if self.split in ["train", "val"]:
+            y_path = os.path.join(self.data_dir, f"{self.split}_y", str(i).zfill(5) + ".npy")
+            y = torch.from_numpy(np.load(y_path))
+            
+            return X, y, subject_idx
         else:
-            return self.X[i], self.subject_idxs[i]
+            return X, subject_idx
 
     @property
     def num_channels(self) -> int:
-        return self.X.shape[1]
+        return np.load(os.path.join(self.data_dir, f"{self.split}_X", "00000.npy")).shape[0]
     
     @property
     def seq_len(self) -> int:
-        return self.X.shape[2]
+        return np.load(os.path.join(self.data_dir, f"{self.split}_X", "00000.npy")).shape[1]
