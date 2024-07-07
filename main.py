@@ -5,12 +5,12 @@ from statistics import mode
 
 from PIL import Image
 import numpy as np
-import pandas
+import pandas as pd
 import torch
 import torch.nn as nn
 import torchvision
 from torchvision import transforms
-
+from torchvision.models import resnet50, ResNet50_Weights
 
 def set_seed(seed):
     random.seed(seed)
@@ -260,7 +260,7 @@ class ResNet(nn.Module):
         self.in_channels = out_channels * block.expansion
         for _ in range(1, blocks):
             layers.append(block(self.in_channels, out_channels))
-
+        layers.append(nn.Dropout(p=0.2))
         return nn.Sequential(*layers)
 
     def forward(self, x):
@@ -290,12 +290,21 @@ def ResNet50():
 class VQAModel(nn.Module):
     def __init__(self, vocab_size: int, n_answer: int):
         super().__init__()
-        self.resnet = ResNet18()
+
+        # class_mappingの読み込み
+        self.class_mapping = pd.read_csv('class_mapping.csv')
+
+        # self.resnet = ResNet18()
+
+        # ResNet50を事前学習済みの重みで初期化
+        self.resnet = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+
         self.text_encoder = nn.Linear(vocab_size, 512)
 
         self.fc = nn.Sequential(
             nn.Linear(1024, 512),
             nn.ReLU(inplace=True),
+            nn.Dropout(p=0.5),
             nn.Linear(512, n_answer)
         )
 
@@ -375,10 +384,11 @@ def main():
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False)
 
-    model = VQAModel(vocab_size=len(train_dataset.question2idx)+1, n_answer=len(train_dataset.answer2idx)).to(device)
+    #model = VQAModel(vocab_size=len(train_dataset.question2idx)+1, n_answer=len(train_dataset.answer2idx)).to(device)
+    model = VQAModel(class_mapping_path='class_mapping.csv').to(device)
 
     # optimizer / criterion
-    num_epoch = 20
+    num_epoch = 10
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
 
