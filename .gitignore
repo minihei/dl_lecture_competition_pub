@@ -1,5 +1,6 @@
 *.pth
 nogit/*
+wandb/*
 data/*
 !data/.gitkeep
 

@@ -280,12 +280,13 @@ class ResNet(nn.Module):
         return x
 
 
-def ResNet18():
-    return ResNet(BasicBlock, [2, 2, 2, 2])
+#def ResNet18():
+#    return ResNet(BasicBlock, [2, 2, 2, 2])
 
 
 def ResNet50():
-    return ResNet(BottleneckBlock, [3, 4, 6, 3])
+#    return ResNet(BottleneckBlock, [3, 4, 6, 3])
+    return ResNet(BasicBlock, [2, 2, 2, 2])
 
 
 class VQAModel(nn.Module):
@@ -295,7 +296,8 @@ class VQAModel(nn.Module):
         # # class_mappingの読み込み
         # self.class_mapping = pd.read_csv('class_mapping.csv')
 
-        self.resnet = ResNet18()
+        #self.resnet = ResNet18()
+        self.resnet = ResNet50()
 
         # ResNet50を事前学習済みの重みで初期化
         # self.resnet = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
@@ -372,6 +374,8 @@ def main():
     # deviceの設定
     set_seed(42)
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    num_workers=2
+    pin_memory=True
     usewandb = True
     wandb.init(mode="online", project="VQA-competition")
 
