@@ -1,3 +1,5 @@
+*.pth
+nogit/*
 data/*
 !data/.gitkeep
 

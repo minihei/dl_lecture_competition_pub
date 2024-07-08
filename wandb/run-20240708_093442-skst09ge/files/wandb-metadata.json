@@ -1,0 +1,45 @@
+{
+    "os": "Windows-10-10.0.19045-SP0",
+    "python": "3.10.11",
+    "heartbeatAt": "2024-07-08T00:34:42.962132",
+    "startedAt": "2024-07-08T00:34:42.119046",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "P:\\DL2024\\gitFiles\\dl_lecture_competition_pub\\VQA\\main.py",
+    "codePathLocal": "main.py",
+    "codePath": "main.py",
+    "git": {
+        "remote": "git@github.com:minihei/dl_lecture_competition_pub",
+        "commit": "f4b31f7da773259d373dc49177a85b2a0d8f1d48"
+    },
+    "email": "mitsuharu.nihei@outlook.jp",
+    "root": "P:/DL2024/gitFiles/dl_lecture_competition_pub/VQA",
+    "host": "NewPC-02",
+    "username": "sampei",
+    "executable": "C:\\Users\\sampei\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.10_qbz5n2kfra8p0\\python.exe",
+    "cpu_count": 4,
+    "cpu_count_logical": 4,
+    "cpu_freq": {
+        "current": 2901.0,
+        "min": 0.0,
+        "max": 2901.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2901.0,
+            "min": 0.0,
+            "max": 2901.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 3725.8261680603027,
+            "used": 548.0376930236816
+        }
+    },
+    "memory": {
+        "total": 15.825958251953125
+    }
+}

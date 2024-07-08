@@ -11,6 +11,7 @@ import torch.nn as nn
 import torchvision
 from torchvision import transforms
 from torchvision.models import resnet50, ResNet50_Weights
+import wandb
 
 def set_seed(seed):
     random.seed(seed)
@@ -66,7 +67,7 @@ class VQADataset(torch.utils.data.Dataset):
     def __init__(self, df_path, image_dir, transform=None, answer=True):
         self.transform = transform  # 画像の前処理
         self.image_dir = image_dir  # 画像ファイルのディレクトリ
-        self.df = pandas.read_json(df_path)  # 画像ファイルのパス，question, answerを持つDataFrame
+        self.df = pd.read_json(df_path)  # 画像ファイルのパス，question, answerを持つDataFrame
         self.answer = answer
 
         # question / answerの辞書を作成
@@ -291,13 +292,13 @@ class VQAModel(nn.Module):
     def __init__(self, vocab_size: int, n_answer: int):
         super().__init__()
 
-        # class_mappingの読み込み
-        self.class_mapping = pd.read_csv('class_mapping.csv')
+        # # class_mappingの読み込み
+        # self.class_mapping = pd.read_csv('class_mapping.csv')
 
-        # self.resnet = ResNet18()
+        self.resnet = ResNet18()
 
         # ResNet50を事前学習済みの重みで初期化
-        self.resnet = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+        # self.resnet = resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
 
         self.text_encoder = nn.Linear(vocab_size, 512)
 
@@ -371,6 +372,8 @@ def main():
     # deviceの設定
     set_seed(42)
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    usewandb = True
+    wandb.init(mode="online", project="VQA-competition")
 
     # dataloader / model
     transform = transforms.Compose([
@@ -384,11 +387,11 @@ def main():
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=1, shuffle=False)
 
-    #model = VQAModel(vocab_size=len(train_dataset.question2idx)+1, n_answer=len(train_dataset.answer2idx)).to(device)
-    model = VQAModel(class_mapping_path='class_mapping.csv').to(device)
+    model = VQAModel(vocab_size=len(train_dataset.question2idx)+1, n_answer=len(train_dataset.answer2idx)).to(device)
+    #model = VQAModel(class_mapping_path='class_mapping.csv').to(device)
 
     # optimizer / criterion
-    num_epoch = 10
+    num_epoch = 2
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
 
@@ -400,6 +403,15 @@ def main():
               f"train loss: {train_loss:.4f}\n"
               f"train acc: {train_acc:.4f}\n"
               f"train simple acc: {train_simple_acc:.4f}")
+        
+        wandb.log({
+			"train loss": np.mean(train_loss), 
+			"train acc": np.mean(train_acc),
+            "train simple acc": np.mean(train_simple_acc)
+		})
+
+
+    
 
     # 提出用ファイルの作成
     model.eval()
@@ -412,8 +424,10 @@ def main():
 
     submission = [train_dataset.idx2answer[id] for id in submission]
     submission = np.array(submission)
-    torch.save(model.state_dict(), "model.pth")
-    np.save("submission.npy", submission)
+    import datetime
+    now = datetime.datetime.now()
+    torch.save(model.state_dict(), "model_" + now.strftime('%Y%m%d_%H%M%S') + ".pth")
+    np.save("submission_" + now.strftime('%Y%m%d_%H%M%S') + ".npy", submission)
 
 if __name__ == "__main__":
     main()
