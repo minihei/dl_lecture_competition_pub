@@ -286,7 +286,7 @@ class ResNet(nn.Module):
 
 def ResNet50():
 #    return ResNet(BottleneckBlock, [3, 4, 6, 3])
-    return ResNet(BasicBlock, [2, 2, 2, 2])
+    return ResNet(BottleneckBlock, [2, 2, 2, 2])
 
 
 class VQAModel(nn.Module):
