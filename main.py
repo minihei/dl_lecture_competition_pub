@@ -394,7 +394,7 @@ def main():
     #model = VQAModel(class_mapping_path='class_mapping.csv').to(device)
 
     # optimizer / criterion
-    num_epoch = 2
+    num_epoch = 1
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
 
